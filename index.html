@@ -41,8 +41,8 @@
             color: white;
             border: none;
             width: 100%;
-            padding: 24px;
-            font-size: 1.2rem;
+            padding: 20px;
+            font-size: 1.1rem;
             font-weight: bold;
             border-radius: 16px;
             cursor: pointer;
@@ -59,6 +59,46 @@
         #fileInput {
             display: none;
         }
+        /* Contenedor de la vista previa */
+        #preview-container {
+            display: none;
+            margin-top: 20px;
+            flex-direction: column;
+            gap: 15px;
+        }
+        img#preview {
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 12px;
+            border: 2px solid #334155;
+        }
+        .action-btns {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-send {
+            flex: 1;
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .btn-cancel {
+            flex: 1;
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+        }
         #status {
             margin-top: 20px;
             font-size: 0.95rem;
@@ -71,53 +111,103 @@
 
     <div class="container">
         <h1>📸 Bingo Fotográfico</h1>
-        <p>Toma tu foto o elige varias de la galería para sumarlas al álbum de la boda.</p>
+        <p>Toma tu foto y revísala antes de subirla al álbum de la boda.</p>
 
         <!-- Botón que activa la cámara o galería -->
-        <label for="fileInput" class="camera-btn">
+        <label for="fileInput" id="upload-label" class="camera-btn">
             <span>📷</span> Abrir Cámara / Galería
         </label>
         
-        <!-- capture="environment" abre la cámara trasera en móviles y multiple permite varias fotos -->
-        <input type="file" id="fileInput" accept="image/*" capture="environment" multiple>
+        <input type="file" id="fileInput" accept="image/*" capture="environment">
+
+        <!-- Vista previa de la foto seleccionada -->
+        <div id="preview-container">
+            <img id="preview" alt="Vista previa">
+            <div class="action-btns">
+                <button type="button" class="btn-cancel" id="cancelBtn">Repetir</button>
+                <button type="button" class="btn-send" id="sendBtn">Enviar al Álbum</button>
+            </div>
+        </div>
 
         <div id="status"></div>
     </div>
 
     <script>
-        // Tu URL exacta de Google Apps Script ya integrada:
         const scriptURL = 'https://script.google.com/macros/s/AKfycbzCqCvNKpFKaaMr0GGCFdK5X3dRQE8JJrjktlCd3KZlqMzOzpjvdwlJNXmGJucLTbCB/exec';
 
         const fileInput = document.getElementById('fileInput');
+        const uploadLabel = document.getElementById('upload-label');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImg = document.getElementById('preview');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const sendBtn = document.getElementById('sendBtn');
         const statusDiv = document.getElementById('status');
 
-        fileInput.addEventListener('change', async function(e) {
+        let selectedFile = null;
+
+        // Cuando seleccionan la foto, mostramos la vista previa
+        fileInput.addEventListener('change', function(e) {
             const files = e.target.files;
-            if (files.length === 0) return;
-
-            statusDiv.innerText = `Subiendo ${files.length} foto(s)... Por favor espera ⏳`;
-
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
+            if (files && files.length > 0) {
+                selectedFile = files[0];
                 const reader = new FileReader();
                 
-                reader.onload = async function(event) {
-                    const base64String = event.target.result;
-                    
-                    try {
-                        await fetch(scriptURL, {
-                            method: 'POST',
-                            mode: 'no-cors', // Necesario para Google Apps Script
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ file: base64String, filename: file.name })
-                        });
-                        statusDiv.innerText = "¡Fotos subidas con éxito a tu Drive! 🎉";
-                    } catch (err) {
-                        statusDiv.innerText = "Error al subir. Inténtalo de nuevo.";
-                    }
-                };
-                reader.readAsDataURL(file);
+                reader.onload = function(event) {
+                    previewImg.src = event.target.result;
+                    uploadLabel.style.display = 'none';
+                    previewContainer.style.display = 'flex';
+                    statusDiv.innerText = '';
+                }
+                reader.readAsDataURL(selectedFile);
             }
+        });
+
+        // Botón repetir (cancela la foto actual)
+        cancelBtn.addEventListener('click', function() {
+            fileInput.value = '';
+            selectedFile = null;
+            previewContainer.style.display = 'none';
+            uploadLabel.style.display = 'flex';
+            statusDiv.innerText = '';
+        });
+
+        // Botón enviar al álbum
+        sendBtn.addEventListener('click', async function() {
+            if (!selectedFile) return;
+
+            statusDiv.innerText = "Subiendo foto a tu Drive... Por favor espera ⏳";
+            sendBtn.disabled = true;
+            cancelBtn.disabled = true;
+
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                const base64String = event.target.result;
+                
+                try {
+                    await fetch(scriptURL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ file: base64String, filename: selectedFile.name })
+                    });
+                    statusDiv.innerText = "¡Foto subida con éxito! 🎉 ¡Gracias!";
+                    setTimeout(() => {
+                        // Reiniciar para otra foto
+                        fileInput.value = '';
+                        selectedFile = null;
+                        previewContainer.style.display = 'none';
+                        uploadLabel.style.display = 'flex';
+                        statusDiv.innerText = '';
+                        sendBtn.disabled = false;
+                        cancelBtn.disabled = false;
+                    }, 2000);
+                } catch (err) {
+                    statusDiv.innerText = "Error al subir. Inténtalo de nuevo.";
+                    sendBtn.disabled = false;
+                    cancelBtn.disabled = false;
+                }
+            };
+            reader.readAsDataURL(selectedFile);
         });
     </script>
 
