@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo Fotográfico - Boda Valentina & Luis David</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            color: #fbbf24;
+        }
+        p {
+            font-size: 0.95rem;
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+        .camera-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 24px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 16px;
+            cursor: pointer;
+            box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: transform 0.1s ease;
+        }
+        .camera-btn:active {
+            transform: scale(0.97);
+        }
+        #fileInput {
+            display: none;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 0.95rem;
+            color: #34d399;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>📸 Bingo Fotográfico</h1>
+        <p>Toma tu foto o elige varias de la galería para sumarlas al álbum de la boda.</p>
+
+        <!-- Botón que activa la cámara o galería -->
+        <label for="fileInput" class="camera-btn">
+            <span>📷</span> Abrir Cámara / Galería
+        </label>
+        
+        <!-- capture="environment" abre la cámara trasera en móviles y multiple permite varias fotos -->
+        <input type="file" id="fileInput" accept="image/*" capture="environment" multiple>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // Tu URL exacta de Google Apps Script ya integrada:
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbzCqCvNKpFKaaMr0GGCFdK5X3dRQE8JJrjktlCd3KZlqMzOzpjvdwlJNXmGJucLTbCB/exec';
+
+        const fileInput = document.getElementById('fileInput');
+        const statusDiv = document.getElementById('status');
+
+        fileInput.addEventListener('change', async function(e) {
+            const files = e.target.files;
+            if (files.length === 0) return;
+
+            statusDiv.innerText = `Subiendo ${files.length} foto(s)... Por favor espera ⏳`;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+                
+                reader.onload = async function(event) {
+                    const base64String = event.target.result;
+                    
+                    try {
+                        await fetch(scriptURL, {
+                            method: 'POST',
+                            mode: 'no-cors', // Necesario para Google Apps Script
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ file: base64String, filename: file.name })
+                        });
+                        statusDiv.innerText = "¡Fotos subidas con éxito a tu Drive! 🎉";
+                    } catch (err) {
+                        statusDiv.innerText = "Error al subir. Inténtalo de nuevo.";
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+
+</body>
+</html>
